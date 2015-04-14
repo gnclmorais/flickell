@@ -13,19 +13,23 @@ findFlag f [] = False
 findFlag f (f':fs) | f == f' = True
 findFlag f (f':fs) = findFlag f fs
 
+download :: String -> String -> String -> IO Bool
+download _ _ _ = return True
+
 main = do
     args <- getArgs
 
-    let input = findArg "-i" args
-    let output = findArg "-o" args
-    let isVerbose = findFlag "-verbose" args
+    -- Get the arguments you need: API key, API secret and the Flickr set ID
+    let apiKey    = findArg "-k" args
+    let apiSecret = findArg "-s" args
+    let setId     = findArg "-i" args
 
-    case input of
-        Nothing -> putStrLn $ "Need stuf!"
-        Just a  -> putStrLn $ "You want input to be " ++ a
-
-    case output of
-        Nothing -> putStrLn $ "Need stuf!"
-        Just a  -> putStrLn $ "You want output to be " ++ a
-
-    putStrLn $ "You want verbosity to be " ++ (show isVerbose)
+    case apiKey of
+        Nothing -> error "No API key provided!"
+        Just k  ->
+            case apiSecret of
+                Nothing -> error "No API secret provided!"
+                Just s  ->
+                    case setId of
+                        Nothing -> error "No set ID provided!"
+                        Just i  -> download (show k) (show s) (show i)
