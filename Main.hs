@@ -1,3 +1,6 @@
+import Flickr.API
+import Util.Keys (hsflickrAPIKey)
+
 import System.Environment
 
 -- Finds arguments and their value
@@ -24,6 +27,7 @@ main = do
     let apiSecret = findArg "-s" args
     let setId     = findArg "-i" args
 
+    -- Cascade through the arguments to make sure all of them are set
     case apiKey of
         Nothing -> error "No API key provided!"
         Just k  ->
