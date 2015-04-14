@@ -1,7 +1,9 @@
-import Flickr.API
-import Util.Keys (hsflickrAPIKey)
-
 import System.Environment
+import Network.HTTP
+import Network.HTTP.Base
+import Network.HTTP.Headers
+import Network.HTTP.Conduit
+import qualified Data.ByteString.Lazy as L
 
 -- Finds arguments and their value
 findArg :: String -> [String] -> Maybe String
@@ -16,6 +18,11 @@ findFlag f [] = False
 findFlag f (f':fs) | f == f' = True
 findFlag f (f':fs) = findFlag f fs
 
+-- Makes a simple request to an URL (HTTPS supported)
+request :: String -> IO ()
+request url = simpleHttp url >>= L.putStr
+
+-- Downloads the photos
 download :: String -> String -> String -> IO Bool
 download _ _ _ = return True
 
