@@ -10,9 +10,10 @@ import Data.Text
 import Data.Aeson
 import GHC.Generics
 import Control.Applicative
-import qualified Data.ByteString.Lazy.Char8 as BS
 
 import qualified Data.ByteString.Lazy as L
+
+testString = "https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&format=json&api_key=69ebb4baf3a207f0151310929d56731d&photoset_id=72157635564577774"
 
 --
 -- Data types
@@ -42,15 +43,30 @@ data Photoset = Photoset
     , name       :: Text
     } deriving (Show, Generic)
 
-data Response = Response
+data FlickrResponse = FlickrResponse
     { photoset :: Photoset
     , stat     :: Text
     } deriving (Show, Generic)
 
 --
 -- Data types handling
---instance FromJSON Response
---instance ToJSON Response
+instance FromJSON FlickrResponse
+instance   ToJSON FlickrResponse
+instance FromJSON Photoset
+instance   ToJSON Photoset
+instance FromJSON Photo
+instance   ToJSON Photo
+
+--
+-- Makes a simple request to an URL (HTTPS supported)
+request :: String -> IO L.ByteString
+request url = simpleHttp url
+
+--
+-- Test function
+--testFunc = do
+--    d <- (eitherDecode <$> (request testString)) :: IO (Either String [FlickrResponse])
+--    show d
 
 --
 -- Finds arguments and their value
@@ -66,11 +82,6 @@ findFlag :: String -> [String] -> Bool
 findFlag f [] = False
 findFlag f (f':fs) | f == f' = True
 findFlag f (f':fs) = findFlag f fs
-
---
--- Makes a simple request to an URL (HTTPS supported)
-request :: String -> IO ()
-request url = simpleHttp url >>= L.putStr
 
 --
 -- Downloads the photos
