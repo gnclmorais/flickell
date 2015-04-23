@@ -97,8 +97,8 @@ data Photoset = Photoset
     } deriving (Show, Generic)
 
 data FlickrResponse = FlickrResponse
-    { stat     :: Text
-    , photoset :: Photoset
+    { photoset :: Photoset
+    , stat     :: Text
     } deriving (Show, Generic)
 
 --
@@ -130,19 +130,18 @@ instance ToJSON Photo where
                ]
 
 instance FromJSON Photoset where
-    parseJSON (Object o) = do
-        id <- o .: "id"
-        primary <- o .: "primary"
-        owner <- o .: "owner"
-        ownername <- o .: "ownername"
-        photo <- parseJSON =<< o .: "photo"
-        page <- o .: "page"
-        per_page <- o .: "per_page"
-        perpage <- o .: "perpage"
-        pages <- o .: "pages"
-        total <- o .: "total"
-        title <- o .: "title"
-        return $ Photoset id primary owner ownername photo page per_page perpage pages total title
+    parseJSON (Object o) =
+        Photoset <$> o .: "id"
+                 <*> o .: "primary"
+                 <*> o .: "owner"
+                 <*> o .: "ownername"
+                 <*> o .: "photo"
+                 <*> o .: "page"
+                 <*> o .: "per_page"
+                 <*> o .: "perpage"
+                 <*> o .: "pages"
+                 <*> o .: "total"
+                 <*> o .: "title"
     parseJSON _ = mzero
 instance ToJSON Photoset where
     toJSON (Photoset photosetid primary owner ownername photo
@@ -161,14 +160,14 @@ instance ToJSON Photoset where
                ]
 
 instance FromJSON FlickrResponse where
-    parseJSON (Object o) = do
-        stat <- o .: "stat"
-        photoset <- parseJSON =<< o .: "photoset"
-        return $ FlickrResponse stat photoset
-    --parseJSON (Object v) =
-    --    FlickrResponse <$> v .: "photoset"
-    --                   <*> v .: "stat"
-    --parseJSON _ = mzero
+    --parseJSON (Object o) = do
+    --    stat <- o .: "stat"
+    --    photoset <- o .: "photoset"
+    --    return $ FlickrResponse stat photoset
+    parseJSON (Object v) =
+        FlickrResponse <$> v .: "photoset"
+                       <*> v .: "stat"
+    parseJSON _ = mzero
 instance ToJSON FlickrResponse where
     toJSON (FlickrResponse photoset stat) =
         object [ "photoset" .= photoset
@@ -181,6 +180,7 @@ instance ToJSON FlickrResponse where
 --request url = simpleHttp url
 request :: String -> L.ByteString
 request url = unsafePerformIO $ simpleHttp url
+-- TODO Replace `unsafePerformIO`
 
 --
 -- Test function
