@@ -5,9 +5,13 @@ import Network.HTTP
 import Network.HTTP.Base
 import Network.HTTP.Headers
 import Network.HTTP.Conduit
+import Network.URI (parseURI)
+
+import Debug.Trace
 
 import System.IO.Unsafe
 
+import Data.Either
 import Text.Parsec.Prim
 import Text.Parsec.Token
 import Text.Parsec.Combinator
@@ -22,10 +26,13 @@ import GHC.Generics
 import Control.Monad
 import Control.Applicative
 
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as L
 
 testString = "https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&format=json&api_key=69ebb4baf3a207f0151310929d56731d&photoset_id=72157635564577774"
+
+testString' = "https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&format=json&api_key=69ebb4baf3a207f0151310929d56731d&photoset_id="
 
 testJSON :: L.ByteString
 testJSON = "{\"foo\": \"bar\"}"
@@ -70,6 +77,27 @@ chopoff' str
 
 --
 -- Data types
+data Size = Size
+    { label  :: Text
+    , width  :: Int
+    , height :: Int
+    , source :: Text
+    , url    :: Text
+    , media  :: Text
+    } deriving (Show, Generic)
+
+data Sizes = Sizes
+    { canblog     :: Int
+    , canprint    :: Int
+    , candownload :: Int
+    , size        :: [Size]
+    } deriving (Show, Generic)
+
+data PhotoSizes = PhotoSizes
+    { sizes :: Sizes
+    , stats :: Text
+    } deriving (Show, Generic)
+
 data Photo = Photo
     { photoid   :: Text
     , secret    :: Text
@@ -103,6 +131,55 @@ data FlickrResponse = FlickrResponse
 
 --
 -- Data types handling
+instance FromJSON Size where
+    parseJSON (Object v) =
+        Size <$> v .: "label"
+             <*> v .: "width"
+             <*> v .: "height"
+             <*> v .: "source"
+             <*> v .: "url"
+             <*> v .: "media"
+    parseJSON _ = mzero
+instance ToJSON Size where
+    toJSON (Size label width height source url media) =
+        object [ "label"  .= label
+               , "width"  .= width
+               , "height" .= height
+               , "source" .= source
+               , "url"    .= url
+               , "media"  .= media
+               ]
+
+instance FromJSON Sizes where
+    parseJSON (Object v) =
+        Sizes <$> v .: "canblog"
+              <*> v .: "canprint"
+              <*> v .: "candownload"
+              <*> v .: "size"
+    parseJSON _ = mzero
+instance ToJSON Sizes where
+    toJSON (Sizes canblog canprint candownload size) =
+        object [ "canblog"     .= canblog
+               , "canprint"    .= canprint
+               , "candownload" .= candownload
+               , "size"        .= size
+               ]
+
+instance FromJSON PhotoSizes where
+    parseJSON (Object v) =
+        PhotoSizes <$> v .: "sizes"
+                   <*> v .: "stat"
+    parseJSON _ = mzero
+instance ToJSON PhotoSizes where
+    toJSON (PhotoSizes sizes stats) =
+        object [ "sizes" .= sizes
+               , "stat"  .= stats
+               ]
+
+
+
+
+
 instance FromJSON Photo where
     parseJSON (Object v) =
         Photo <$> v .: "id"
@@ -182,6 +259,74 @@ request :: String -> L.ByteString
 request url = unsafePerformIO $ simpleHttp url
 -- TODO Replace `unsafePerformIO`
 
+jsonToData :: String -> Either String FlickrResponse
+jsonToData url = do
+  d <- eitherDecode $ chopoff $ request testString :: Either String FlickrResponse
+  return d
+
+getPhotos :: FlickrResponse -> [Photo]
+getPhotos (FlickrResponse (Photoset _ _ _ _ photos _ _ _ _ _ _) _) = photos
+
+handleJsonFailure :: String -> Bool
+handleJsonFailure msg = False
+
+handleJsonSuccess :: FlickrResponse -> Bool
+handleJsonSuccess rsp = do
+    let photoset = getPhotos rsp
+    let sizesUrl = map getPhotoSizesUrl photoset
+    let sizes = map (getPhotoSizes . T.unpack) sizesUrl
+    let urls = map handleSizes sizes
+    traceShow urls True
+    --True
+
+handleSizes :: Either String PhotoSizes -> Text
+handleSizes (Left err) = T.pack err
+handleSizes (Right (PhotoSizes (Sizes _ _ _ sizes) _)) =
+    Main.source . head $ filter (\x -> Main.label x == "Original") sizes
+
+getPhotoSizes :: String -> Either String PhotoSizes
+getPhotoSizes url =
+    eitherDecode $ request url :: Either String PhotoSizes
+
+
+downloady = do
+    jpg <- get "http://www.irregularwebcomic.net/comics/irreg2557.jpg"
+    B.writeFile "irreg2557.jpg" jpg
+    where
+        get url = let uri = case parseURI url of
+                              Nothing -> error $ "Invalid URI: " ++ url
+                              Just u -> u in
+                  simpleHTTP (defaultGETRequest_ uri) >>= getResponseBody
+
+
+downloadPhoto url = do
+    jpg <- get $ T.unpack url
+    B.writeFile filename jpg
+    where
+        --filename = T.unpack $ last $ T.split (== '/') url
+        filename = "9774244001_82ec04b2a2_s.jpg"
+        get url = simpleHTTP (defaultGETRequest_ uri) >>= getResponseBody
+            where
+                uri = case parseURI url of
+                    Nothing -> error $ "Invalid URI: " ++ url
+                    Just u -> u
+
+
+
+
+
+
+
+
+-- TODO
+getPhotoSizesUrl :: Photo -> Text
+getPhotoSizesUrl (Photo id _ _ _ _ _ _ _ _) = T.append "https://api.flickr.com/services/rest/?method=flickr.photos.getSizes&format=json&api_key=69ebb4baf3a207f0151310929d56731d&photo_id=" id
+
+-- Given an URL from the method flickr.photos.getSizes, returns the JSON string
+fetchPhotoSizes :: Text -> L.ByteString
+fetchPhotoSizes url = request $ show url
+
+
 --
 -- Test function
 --testFunc = do
@@ -215,17 +360,28 @@ main = do
     args <- getArgs
 
     -- Get the arguments you need: API key, API secret and the Flickr set ID
-    let apiKey    = findArg "-k" args
-    let apiSecret = findArg "-s" args
-    let setId     = findArg "-i" args
+    --let apiKey    = findArg "-k" args
+    --let apiSecret = findArg "-s" args
+    --let setId     = findArg "-i" args
 
     -- Cascade through the arguments to make sure all of them are set
-    case apiKey of
-        Nothing -> error "No API key provided!"
-        Just k  ->
-            case apiSecret of
-                Nothing -> error "No API secret provided!"
-                Just s  ->
-                    case setId of
-                        Nothing -> error "No set ID provided!"
-                        Just i  -> download (show k) (show s) (show i)
+    --case apiKey of
+    --    Nothing -> error "No API key provided!"
+    --    Just k  ->
+    --        case apiSecret of
+    --            Nothing -> error "No API secret provided!"
+    --            Just s  ->
+    --                case setId of
+    --                    Nothing -> error "No set ID provided!"
+    --                    Just i  -> download (show k) (show s) (show i)
+
+    -- Get the photoset ID
+    let photosetId = testString' ++ "72157635564577774"
+    -- Get the photos from it
+    let response = jsonToData photosetId
+    return $ either (handleJsonFailure) (handleJsonSuccess) response
+    -- For each photo:
+       -- Get its sizes
+       -- Search/filter for the "Original" tag
+          -- If found, download it
+          -- Else, show a warning (mostly for debugging purposes)
