@@ -272,7 +272,9 @@ handleJsonSuccess rsp = do
     let sizesUrl = map getPhotoSizesUrl photoset
     let sizes = map (getPhotoSizes . T.unpack) sizesUrl
     let urls = map handleSizes sizes
-    downloadPhoto $ head urls
+    --downloadPhoto $ head urls
+    let ops = map downloadPhoto urls
+    sequence_ ops
     return "Done!"
     --True
 
@@ -298,11 +300,11 @@ getPhotoSizes url =
 -- Inspired by http://stackoverflow.com/a/11514868/590525
 downloadPhoto :: Text -> IO ()
 downloadPhoto url = do
-    jpg <- get $ T.unpack $ T.replace "https" "http" url
+    jpg <- get $ T.unpack $ (T.replace "https" "http" url)
     B.writeFile filename jpg
     where
-        filename = T.unpack $ last $ T.split (== '/') url
         --filename = "9774244001_82ec04b2a2_s.jpg"
+        filename = T.unpack $ last $ T.split (== '/') url
         get url = simpleHTTP (defaultGETRequest_ $ uri) >>= getResponseBody
             where
                 uri = case parseURI url of
