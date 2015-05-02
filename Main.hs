@@ -26,6 +26,7 @@ import GHC.Generics
 import Control.Monad
 import Control.Applicative
 
+import qualified Data.List.Split as S
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as L
@@ -79,8 +80,6 @@ chopoff' str
 -- Data types
 data Size = Size
     { label  :: Text
-    , width  :: Int
-    , height :: Int
     , source :: Text
     , url    :: Text
     , media  :: Text
@@ -134,17 +133,13 @@ data FlickrResponse = FlickrResponse
 instance FromJSON Size where
     parseJSON (Object v) =
         Size <$> v .: "label"
-             <*> v .: "width"
-             <*> v .: "height"
              <*> v .: "source"
              <*> v .: "url"
              <*> v .: "media"
     parseJSON _ = mzero
 instance ToJSON Size where
-    toJSON (Size label width height source url media) =
+    toJSON (Size label source url media) =
         object [ "label"  .= label
-               , "width"  .= width
-               , "height" .= height
                , "source" .= source
                , "url"    .= url
                , "media"  .= media
@@ -267,16 +262,18 @@ jsonToData url = do
 getPhotos :: FlickrResponse -> [Photo]
 getPhotos (FlickrResponse (Photoset _ _ _ _ photos _ _ _ _ _ _) _) = photos
 
-handleJsonFailure :: String -> Bool
-handleJsonFailure msg = False
+--handleJsonFailure :: String -> String
+handleJsonFailure msg = do
+    return "Failure"
 
-handleJsonSuccess :: FlickrResponse -> Bool
+--handleJsonSuccess :: FlickrResponse -> String
 handleJsonSuccess rsp = do
     let photoset = getPhotos rsp
     let sizesUrl = map getPhotoSizesUrl photoset
     let sizes = map (getPhotoSizes . T.unpack) sizesUrl
     let urls = map handleSizes sizes
-    traceShow urls True
+    downloadPhoto $ head urls
+    return "Done!"
     --True
 
 handleSizes :: Either String PhotoSizes -> Text
@@ -286,26 +283,27 @@ handleSizes (Right (PhotoSizes (Sizes _ _ _ sizes) _)) =
 
 getPhotoSizes :: String -> Either String PhotoSizes
 getPhotoSizes url =
-    eitherDecode $ request url :: Either String PhotoSizes
+    eitherDecode $ chopoff $ request url :: Either String PhotoSizes
 
 
-downloady = do
-    jpg <- get "http://www.irregularwebcomic.net/comics/irreg2557.jpg"
-    B.writeFile "irreg2557.jpg" jpg
-    where
-        get url = let uri = case parseURI url of
-                              Nothing -> error $ "Invalid URI: " ++ url
-                              Just u -> u in
-                  simpleHTTP (defaultGETRequest_ uri) >>= getResponseBody
+--downloady = do
+--    jpg <- get "http://www.irregularwebcomic.net/comics/irreg2557.jpg"
+--    B.writeFile "irreg2557.jpg" jpg
+--    where
+--        get url = let uri = case parseURI url of
+--                              Nothing -> error $ "Invalid URI: " ++ url
+--                              Just u -> u in
+--                  simpleHTTP (defaultGETRequest_ uri) >>= getResponseBody
 
-
+-- Inspired by http://stackoverflow.com/a/11514868/590525
+downloadPhoto :: Text -> IO ()
 downloadPhoto url = do
-    jpg <- get $ T.unpack url
+    jpg <- get $ T.unpack $ T.replace "https" "http" url
     B.writeFile filename jpg
     where
-        --filename = T.unpack $ last $ T.split (== '/') url
-        filename = "9774244001_82ec04b2a2_s.jpg"
-        get url = simpleHTTP (defaultGETRequest_ uri) >>= getResponseBody
+        filename = T.unpack $ last $ T.split (== '/') url
+        --filename = "9774244001_82ec04b2a2_s.jpg"
+        get url = simpleHTTP (defaultGETRequest_ $ uri) >>= getResponseBody
             where
                 uri = case parseURI url of
                     Nothing -> error $ "Invalid URI: " ++ url
@@ -314,7 +312,7 @@ downloadPhoto url = do
 
 
 
-
+replace old new = join new . S.split old
 
 
 
@@ -351,10 +349,6 @@ findFlag f [] = False
 findFlag f (f':fs) | f == f' = True
 findFlag f (f':fs) = findFlag f fs
 
---
--- Downloads the photos
-download :: String -> String -> String -> IO Bool
-download _ _ _ = return True
 
 main = do
     args <- getArgs
@@ -379,7 +373,7 @@ main = do
     let photosetId = testString' ++ "72157635564577774"
     -- Get the photos from it
     let response = jsonToData photosetId
-    return $ either (handleJsonFailure) (handleJsonSuccess) response
+    either (handleJsonFailure) (handleJsonSuccess) response
     -- For each photo:
        -- Get its sizes
        -- Search/filter for the "Original" tag
