@@ -20,7 +20,6 @@ import qualified Text.ParserCombinators.Parsec as P
 import Data.Char (isLetter, isDigit)
 import qualified Data.Text as T
 import Data.Text.Internal
---Data.Text.init
 import Data.Aeson
 import GHC.Generics
 import Control.Monad
@@ -64,17 +63,6 @@ chopoff' str
     where
         lenStr = L.length str
         lenWrp = L.length ("jsonFlickrApi" :: L.ByteString)
-
---parseWrapper :: ParsecT s u m String
---parseWrapper = do
---    x <- P.many (P.noneOf "{")
---    return x
-
-    --between (symbol "{") (symbol "}")
-
-    --e0 <- many1 letter
-    --e1 <- char '('
-    --return init
 
 --
 -- Data types
@@ -232,10 +220,6 @@ instance ToJSON Photoset where
                ]
 
 instance FromJSON FlickrResponse where
-    --parseJSON (Object o) = do
-    --    stat <- o .: "stat"
-    --    photoset <- o .: "photoset"
-    --    return $ FlickrResponse stat photoset
     parseJSON (Object v) =
         FlickrResponse <$> v .: "photoset"
                        <*> v .: "stat"
@@ -376,8 +360,3 @@ main = do
     -- Get the photos from it
     let response = jsonToData photosetId
     either (handleJsonFailure) (handleJsonSuccess) response
-    -- For each photo:
-       -- Get its sizes
-       -- Search/filter for the "Original" tag
-          -- If found, download it
-          -- Else, show a warning (mostly for debugging purposes)
