@@ -331,35 +331,26 @@ findFlag f [] = False
 findFlag f (f':fs) | f == f' = True
 findFlag f (f':fs) = findFlag f fs
 
+-- Gets an API key & the photoset ID, and returns a proper Flickr API link
 getSetUrl :: String -> String -> String
 getSetUrl key id = printf "https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&format=json&api_key=%s&photoset_id=%s" key id
 
---download :: String -> String -> IO String
-download key id = do
-    -- Get the photoset ID
-    let photosetId = getSetUrl key id
-    -- Get the photos from it
-    let response = jsonToData photosetId
+-- Gets a proper Flickr API link and tries to download it.
+download :: String -> IO String
+download url = do
     either (handleJsonFailure) (handleJsonSuccess) response
+        where response = jsonToData url
 
+main :: IO ()
 main = do
     args <- getArgs
-
     -- Get the arguments you need: API key, API secret and the Flickr set ID
     let apiKey = findArg "-k" args
     let setId  = findArg "-i" args
-
-    -- Cascade through the arguments to make sure all of them are set
-    --case apiKey of
-    --    Nothing -> error "No API key provided!"
-    --    Just k  ->
-    --        case setId of
-    --            Nothing -> error "No set ID provided!"
-    --            Just i  -> return (download k i)
-
+    -- Make sure you have the necessary elements
     case (apiKey, setId) of
-        (Nothing, _) -> error "No API key provided!"
-        (_, Nothing) -> error "No set ID provided!"
-        (Just k, Just i) -> download k i
-
+        (Nothing, _)     -> error "No API key provided!"
+        (_, Nothing)     -> error "No set ID provided!"
+        (Just k, Just i) -> download photosetUrl
+            where photosetUrl = getSetUrl k i
     return ()
