@@ -43,11 +43,6 @@ testPhoto = "{\"id\":\"9774244001\",\"secret\":\"82ec04b2a2\",\"server\":\"7338\
 testSet :: L.ByteString
 testSet = "{\"id\":\"72157635564577774\",\"primary\":\"9774244001\",\"owner\":\"101926979@N03\",\"ownername\":\"m_besser\",\"photo\":[{\"id\":\"9774244001\",\"secret\":\"82ec04b2a2\",\"server\":\"7338\",\"farm\":8,\"title\":\"CSSConf.eu 2013\",\"isprimary\":\"0\",\"ispublic\":1,\"isfriend\":0,\"isfamily\":0},{\"id\":\"9774529423\",\"secret\":\"ffa1ede746\",\"server\":\"7284\",\"farm\":8,\"title\":\"CSSConf.eu 2013\",\"isprimary\":\"0\",\"ispublic\":1,\"isfriend\":0,\"isfamily\":0}],\"page\":1,\"per_page\":500,\"perpage\":500,\"pages\":1,\"total\":\"34\",\"title\":\"CSSconf.eu 2013\"},\"stat\":\"ok\"}"
 
--- First function example! Use it like:
--- parse jsonWrapper "unknown" "jsonFlickrApi({\"photoset\": \"test\"})"
-jsonWrapper :: P.GenParser Char st String
-jsonWrapper = P.many (P.noneOf "{")
-
 chopoff :: L.ByteString -> L.ByteString
 chopoff str
     | lenStr < lenWrp = str
