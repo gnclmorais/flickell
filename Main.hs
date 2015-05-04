@@ -6,17 +6,11 @@ import Network.HTTP.Base
 import Network.HTTP.Headers
 import Network.HTTP.Conduit
 import Network.URI (parseURI)
-
-import Debug.Trace
-
 import System.IO.Unsafe
-
 import Data.Either
 import Text.Parsec.Prim
 import Text.Parsec.Token
 import Text.Parsec.Combinator
-import qualified Text.ParserCombinators.Parsec as P
-
 import Data.Char (isLetter, isDigit)
 import qualified Data.Text as T
 import Data.Text.Internal
@@ -24,9 +18,7 @@ import Data.Aeson
 import GHC.Generics
 import Control.Monad
 import Control.Applicative
-
 import Text.Printf
-
 import qualified Data.List.Split as S
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
@@ -156,10 +148,6 @@ instance ToJSON PhotoSizes where
                , "stat"  .= stats
                ]
 
-
-
-
-
 instance FromJSON Photo where
     parseJSON (Object v) =
         Photo <$> v .: "id"
@@ -267,16 +255,6 @@ getPhotoSizes :: String -> Either String PhotoSizes
 getPhotoSizes url =
     eitherDecode $ chopoff $ request url :: Either String PhotoSizes
 
-
---downloady = do
---    jpg <- get "http://www.irregularwebcomic.net/comics/irreg2557.jpg"
---    B.writeFile "irreg2557.jpg" jpg
---    where
---        get url = let uri = case parseURI url of
---                              Nothing -> error $ "Invalid URI: " ++ url
---                              Just u -> u in
---                  simpleHTTP (defaultGETRequest_ uri) >>= getResponseBody
-
 -- Inspired by http://stackoverflow.com/a/11514868/590525
 downloadPhoto :: Text -> IO ()
 downloadPhoto url = do
@@ -291,13 +269,6 @@ downloadPhoto url = do
                     Nothing -> error $ "Invalid URI: " ++ url
                     Just u -> u
 
-
-
-
-replace old new = join new . S.split old
-
-
-
 -- TODO
 getPhotoSizesUrl :: Photo -> Text
 getPhotoSizesUrl (Photo id _ _ _ _ _ _ _ _) = T.append "https://api.flickr.com/services/rest/?method=flickr.photos.getSizes&format=json&api_key=69ebb4baf3a207f0151310929d56731d&photo_id=" id
@@ -306,30 +277,12 @@ getPhotoSizesUrl (Photo id _ _ _ _ _ _ _ _) = T.append "https://api.flickr.com/s
 fetchPhotoSizes :: Text -> L.ByteString
 fetchPhotoSizes url = request $ show url
 
-
---
--- Test function
---testFunc = do
---    d <- (eitherDecode <$> (request testString)) :: IO (Either String [FlickrResponse])
---    show d
-
--- TEST - THIS KIND OF WORKS:
--- eitherDecode $ chopoff $ request testString :: Either String FlickrResponse
-
---
 -- Finds arguments and their value
 findArg :: String -> [String] -> Maybe String
 findArg k []  = Nothing
 findArg k [_] = Nothing
 findArg k (k':a:as) | k == k' = Just a
 findArg k (k':a:as) = findArg k as
-
---
--- Finds simple flags
-findFlag :: String -> [String] -> Bool
-findFlag f [] = False
-findFlag f (f':fs) | f == f' = True
-findFlag f (f':fs) = findFlag f fs
 
 -- Gets an API key & the photoset ID, and returns a proper Flickr API link
 getSetUrl :: String -> String -> String
