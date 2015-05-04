@@ -25,6 +25,8 @@ import GHC.Generics
 import Control.Monad
 import Control.Applicative
 
+import Text.Printf
+
 import qualified Data.List.Split as S
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
@@ -255,7 +257,6 @@ handleJsonSuccess rsp = do
     let ops = map downloadPhoto urls
     sequence_ ops
     return "Done!"
-    --True
 
 handleSizes :: Either String PhotoSizes -> Text
 handleSizes (Left err) = T.pack err
@@ -330,28 +331,35 @@ findFlag f [] = False
 findFlag f (f':fs) | f == f' = True
 findFlag f (f':fs) = findFlag f fs
 
+getSetUrl :: String -> String -> String
+getSetUrl key id = printf "https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&format=json&api_key=%s&photoset_id=%s" key id
+
+--download :: String -> String -> IO String
+download key id = do
+    -- Get the photoset ID
+    let photosetId = getSetUrl key id
+    -- Get the photos from it
+    let response = jsonToData photosetId
+    either (handleJsonFailure) (handleJsonSuccess) response
 
 main = do
     args <- getArgs
 
     -- Get the arguments you need: API key, API secret and the Flickr set ID
-    --let apiKey    = findArg "-k" args
-    --let apiSecret = findArg "-s" args
-    --let setId     = findArg "-i" args
+    let apiKey = findArg "-k" args
+    let setId  = findArg "-i" args
 
     -- Cascade through the arguments to make sure all of them are set
     --case apiKey of
     --    Nothing -> error "No API key provided!"
     --    Just k  ->
-    --        case apiSecret of
-    --            Nothing -> error "No API secret provided!"
-    --            Just s  ->
-    --                case setId of
-    --                    Nothing -> error "No set ID provided!"
-    --                    Just i  -> download (show k) (show s) (show i)
+    --        case setId of
+    --            Nothing -> error "No set ID provided!"
+    --            Just i  -> return (download k i)
 
-    -- Get the photoset ID
-    let photosetId = testString' ++ "72157635564577774"
-    -- Get the photos from it
-    let response = jsonToData photosetId
-    either (handleJsonFailure) (handleJsonSuccess) response
+    case (apiKey, setId) of
+        (Nothing, _) -> error "No API key provided!"
+        (_, Nothing) -> error "No set ID provided!"
+        (Just k, Just i) -> download k i
+
+    return ()
