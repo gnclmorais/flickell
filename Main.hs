@@ -32,7 +32,7 @@ chopoff str
     | otherwise       = L.init $ L.drop lenWrp str
     where
         lenStr = L.length str
-        lenWrp = L.length ("jsonFlickrApi(" :: L.ByteString)
+        lenWrp = L.length "jsonFlickrApi("
 
 -- Data types
 data Size = Size
@@ -197,8 +197,6 @@ instance ToJSON FlickrResponse where
 
 --
 -- Makes a simple request to an URL (HTTPS supported)
---request :: String -> IO L.ByteString
---request url = simpleHttp url
 request :: String -> L.ByteString
 request url = unsafePerformIO $ simpleHttp url
 -- TODO Replace `unsafePerformIO`
@@ -222,8 +220,7 @@ handleJsonSuccess rsp = do
     let sizes = map (getPhotoSizes . T.unpack) sizesUrl
     let urls = map handleSizes sizes
     --downloadPhoto $ head urls
-    let ops = map downloadPhoto urls
-    sequence_ ops
+    sequence_ $ map downloadPhoto urls
     return "Done!"
 
 handleSizes :: Either String PhotoSizes -> Text
