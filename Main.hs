@@ -26,17 +26,6 @@ import qualified Data.ByteString.Lazy as L
 
 testString = "https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&format=json&api_key=69ebb4baf3a207f0151310929d56731d&photoset_id=72157635564577774"
 
-testString' = "https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&format=json&api_key=69ebb4baf3a207f0151310929d56731d&photoset_id="
-
-testJSON :: L.ByteString
-testJSON = "{\"foo\": \"bar\"}"
-
-testPhoto :: L.ByteString
-testPhoto = "{\"id\":\"9774244001\",\"secret\":\"82ec04b2a2\",\"server\":\"7338\",\"farm\":8,\"title\":\"CSSConf.eu 2013\",\"isprimary\":\"0\",\"ispublic\":1,\"isfriend\":0,\"isfamily\":0}"
-
-testSet :: L.ByteString
-testSet = "{\"id\":\"72157635564577774\",\"primary\":\"9774244001\",\"owner\":\"101926979@N03\",\"ownername\":\"m_besser\",\"photo\":[{\"id\":\"9774244001\",\"secret\":\"82ec04b2a2\",\"server\":\"7338\",\"farm\":8,\"title\":\"CSSConf.eu 2013\",\"isprimary\":\"0\",\"ispublic\":1,\"isfriend\":0,\"isfamily\":0},{\"id\":\"9774529423\",\"secret\":\"ffa1ede746\",\"server\":\"7284\",\"farm\":8,\"title\":\"CSSConf.eu 2013\",\"isprimary\":\"0\",\"ispublic\":1,\"isfriend\":0,\"isfamily\":0}],\"page\":1,\"per_page\":500,\"perpage\":500,\"pages\":1,\"total\":\"34\",\"title\":\"CSSconf.eu 2013\"},\"stat\":\"ok\"}"
-
 chopoff :: L.ByteString -> L.ByteString
 chopoff str
     | lenStr < lenWrp = str
@@ -45,15 +34,6 @@ chopoff str
         lenStr = L.length str
         lenWrp = L.length ("jsonFlickrApi(" :: L.ByteString)
 
-chopoff' :: L.ByteString -> L.ByteString
-chopoff' str
-    | lenStr < lenWrp = str
-    | otherwise       = L.drop lenWrp str
-    where
-        lenStr = L.length str
-        lenWrp = L.length ("jsonFlickrApi" :: L.ByteString)
-
---
 -- Data types
 data Size = Size
     { label  :: Text
