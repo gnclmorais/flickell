@@ -24,8 +24,6 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as L
 
-testString = "https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&format=json&api_key=69ebb4baf3a207f0151310929d56731d&photoset_id=72157635564577774"
-
 chopoff :: L.ByteString -> L.ByteString
 chopoff str
     | lenStr < lenWrp = str
@@ -203,7 +201,7 @@ request url = unsafePerformIO $ simpleHttp url
 
 jsonToData :: String -> Either String FlickrResponse
 jsonToData url = do
-  d <- eitherDecode $ chopoff $ request testString :: Either String FlickrResponse
+  d <- eitherDecode $ chopoff $ request url :: Either String FlickrResponse
   return d
 
 getPhotos :: FlickrResponse -> [Photo]
@@ -214,9 +212,9 @@ handleJsonFailure msg = do
     return "Failure"
 
 --handleJsonSuccess :: FlickrResponse -> String
-handleJsonSuccess rsp = do
+handleJsonSuccess k rsp = do
     let photoset = getPhotos rsp
-    let sizesUrl = map getPhotoSizesUrl photoset
+    let sizesUrl = map (getPhotoSizesUrl k) photoset
     let sizes = map (getPhotoSizes . T.unpack) sizesUrl
     let urls = map handleSizes sizes
     --downloadPhoto $ head urls
@@ -247,8 +245,8 @@ downloadPhoto url = do
                     Just u -> u
 
 -- TODO
-getPhotoSizesUrl :: Photo -> Text
-getPhotoSizesUrl (Photo id _ _ _ _ _ _ _ _) = T.append "https://api.flickr.com/services/rest/?method=flickr.photos.getSizes&format=json&api_key=69ebb4baf3a207f0151310929d56731d&photo_id=" id
+getPhotoSizesUrl :: String -> Photo -> Text
+getPhotoSizesUrl apiKey (Photo id _ _ _ _ _ _ _ _) = T.pack $ printf "https://api.flickr.com/services/rest/?method=flickr.photos.getSizes&format=json&api_key=%s&photo_id=%s" apiKey (T.unpack id)
 
 -- Given an URL from the method flickr.photos.getSizes, returns the JSON string
 fetchPhotoSizes :: Text -> L.ByteString
@@ -266,10 +264,12 @@ getSetUrl :: String -> String -> String
 getSetUrl key id = printf "https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&format=json&api_key=%s&photoset_id=%s" key id
 
 -- Gets a proper Flickr API link and tries to download it.
-download :: String -> IO String
-download url = do
-    either (handleJsonFailure) (handleJsonSuccess) response
-        where response = jsonToData url
+download :: String -> String -> IO String
+download k i = do
+    either (handleJsonFailure) (handleJsonSuccess k) response
+        where
+            url = getSetUrl k i
+            response = jsonToData url
 
 main :: IO ()
 main = do
@@ -281,6 +281,5 @@ main = do
     case (apiKey, setId) of
         (Nothing, _)     -> error "No API key provided!"
         (_, Nothing)     -> error "No set ID provided!"
-        (Just k, Just i) -> download photosetUrl
-            where photosetUrl = getSetUrl k i
+        (Just k, Just i) -> download k i
     return ()
