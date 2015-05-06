@@ -1,4 +1,4 @@
-# flickell
+# Flickell
 CLI written in Haskell to help with Flickr batch downloads.
 
 ### TODO
@@ -8,3 +8,5 @@ CLI written in Haskell to help with Flickr batch downloads.
 - [x] Download photo(s) & save into file(s)
 - [x] Get set ID as command line argument
 - [ ] Work around `unsafePerformIO` to improve code
+- [ ] Add verbose mode
+- [ ] Progress info/bar
