@@ -1,7 +1,12 @@
 # Flickell
 CLI written in Haskell to help with Flickr batch downloads.
 
-### TODO
+## Usage
+```bash
+cabal run -- -k [your-Flickr-key] -i [set-id]
+```
+
+## To do
 - [x] Perform HTTPS request (fetching a JSON)
 - [x] JSON to data type
 - [x] Request photo(s) from the JSON received
